@@ -10,12 +10,17 @@ from datetime import timedelta
 
 app = FastAPI(title="Bookstore API")
 
-create_table()
+# Create tables when the app starts 
+@app.on_event("startup")
+def on_startup():
+    create_table()
 
+# Root endpoint
 @app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Welcome to the Bookstore API. Use /register and /login to get started."}
+    return {"message": "📚 Welcome to the Bookstore API. Use /register and /login to get started."}
 
+# Register a new user
 @app.post("/register", response_model=Token)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.username == user.username).first():
@@ -28,6 +33,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     token = create_access_token({"sub": new_user.username})
     return {"access_token": token, "token_type": "bearer"}
 
+# Login user
 @app.post("/login", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form.username, form.password)
@@ -36,30 +42,55 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     token = create_access_token({"sub": user.username}, timedelta(minutes=30))
     return {"access_token": token, "token_type": "bearer"}
 
+# Create a new book
 @app.post("/books", response_model=schemas.BookResponse, status_code=201)
-def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_book(
+    book: schemas.BookCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     return services.create_book(db, book)
 
+# Get all books
 @app.get("/books", response_model=list[schemas.BookResponse])
-def get_books(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_books(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     return services.get_all_books(db)
 
+# Get book by ID
 @app.get("/books/{book_id}", response_model=schemas.BookResponse)
-def get_book(book_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_book(
+    book_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     book = services.get_book(db, book_id)
     if not book:
         raise HTTPException(404, detail="Book not found")
     return book
 
+# Update book by ID
 @app.put("/books/{book_id}", response_model=schemas.BookResponse)
-def update_book(book_id: int, book_update: schemas.BookUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_book(
+    book_id: int,
+    book_update: schemas.BookUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     updated_book = services.update_book(db, book_id, book_update)
     if not updated_book:
         raise HTTPException(404, detail="Book not found")
     return updated_book
 
+# Delete book by ID
 @app.delete("/books/{book_id}", response_model=schemas.BookResponse)
-def delete_book(book_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_book(
+    book_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     deleted = services.delete_book(db, book_id)
     if not deleted:
         raise HTTPException(404, detail="Book not found")

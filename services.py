@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models import Book
 from schemas import BookCreate, BookUpdate
+# import db as _db
 
 def create_book(db: Session, book: BookCreate):
     db_book = Book(**book.dict())
